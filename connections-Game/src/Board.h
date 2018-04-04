@@ -4,9 +4,12 @@
 
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include <stack>
 #include <cmath>
 #include <iostream>
 
+
+extern bool g_GAME_IS_WON;
 
 
 class Board{
@@ -44,6 +47,10 @@ class Board{
         //change from horizontal to vertical and vice-versa
         void toggleMode();
 
+        bool checkWinningCondition();
+
+        void PerformVictory();
+
         Player getCurrentPlayer(){
             return m_currentPlayer;
         }
@@ -62,7 +69,10 @@ class Board{
         int m_currentMoveBegin = 0;
         int m_currentMoveEnd = 1;
 
-        std::vector<sf::CircleShape> debugCircles;
+        std::vector<sf::CircleShape> m_debugCircles;
+        std::vector<sf::Text> m_text;
+
+        sf::Font m_font;
 
         //The state is stored in variables and upon switching the player 
         //pointers and variables are switched for the other player
@@ -116,6 +126,9 @@ class Board{
         void SwitchPlayers(Player player);
 
         void setState(Player player);
+
+        bool DFSCycles(int start, int node, std::vector<int> &visited);
+        bool DFSPathExists(int currentNode, int goalNode, std::vector<int> &visited);
 
 
 };

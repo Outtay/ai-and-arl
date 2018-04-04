@@ -54,6 +54,8 @@ Board::Board(int xStart, int yStart, int size){
             //This already starts the game and puts the first edge on the board
             FirstLegalMove(m_currentMoveBegin, m_currentMoveEnd);
             addConnection(m_currentMoveBegin, m_currentMoveEnd, Virtual::VIRTUAL_PIECE);
+
+            m_font.loadFromFile("arial.ttf");
             
             /*setState(Player::RED);
             addConnection(0,6, Player::RED, true);
@@ -72,21 +74,29 @@ void Board::RenderBoard(sf::RenderWindow &window){
     } 
     for(size_t i = 0; i < m_whiteEdgesSize; i++){
         window.draw(m_whiteEdges[i]);
-        /*sf::CircleShape tmp (5, 6);
-        tmp.setPosition(m_whiteEdges[i].getPosition());
-        tmp.setFillColor(sf::Color(255,0,0));
-        window.draw(tmp);*/
     }
     for(size_t i = 0; i < m_redEdgesSize; i++){
         window.draw(m_redEdges[i]);
-        /*sf::CircleShape tmp(5,6);
-        tmp.setPosition(m_redEdges[i].getPosition());
-        window.draw(tmp);*/
     }
 
-    for(size_t i = 0; i < debugCircles.size(); i++){
-        window.draw(debugCircles[i]);
+    for(size_t i = 0; i < m_debugCircles.size(); i++){
+        window.draw(m_debugCircles[i]);
     }
+
+    for(size_t i = 0; i < m_text.size(); i++){
+        window.draw(m_text[i]);
+    }
+
+    /*// Declare and load a font
+    sf::Font font;
+    font.loadFromFile("arial.ttf");
+    // Create a text
+    sf::Text text("hello", font);
+    text.setCharacterSize(30);
+    text.setStyle(sf::Text::Bold);
+    text.setFillColor(sf::Color::Red);
+
+    window.draw(text);*/
         
 }
 
@@ -172,8 +182,6 @@ void Board::FirstLegalMove(int &id1, int &id2){
         //first find out if at the current Position there might
         //be a possible move 
         //This is useful for toggling between horizontal and vertical
-        //and is quite a hack to prevent getting stuck somewhere
-        //TODO: find out if that still might happen
         if ( MovePossible(id1, id1 + 1)){
             id2 = id1 + 1;
             return;
@@ -183,7 +191,7 @@ void Board::FirstLegalMove(int &id1, int &id2){
         for (size_t i = 0; i < 29; i++){
             int tmpId1 = i;
             int tmpId2 = i+1;
-            if(!ConnectionExists(tmpId1, tmpId2)){
+            if(MovePossible(tmpId1, tmpId2)){
                 id1 = tmpId1;
                 id2 = tmpId2;
                 return;
@@ -200,7 +208,7 @@ void Board::FirstLegalMove(int &id1, int &id2){
             int tmpId1 = i;
             int tmpId2 = i + m_playerBoardWidth;
             if( (tmpId1 < (m_playerBoardWidth * m_playerBoardHeight - 1 ) 
-                        && !ConnectionExists(tmpId1, tmpId2))){
+                        && MovePossible(tmpId1, tmpId2))){
                 id1 = tmpId1;
                 id2 = tmpId2;
                 return;
@@ -225,7 +233,10 @@ void Board::SwitchPlayers(Player player){
 void Board::CommitMove(){
     removeLastVirtualConnection();
     addConnection(m_currentMoveBegin, m_currentMoveEnd, Virtual::REAL_PIECE);
-    SwitchPlayers(m_otherPlayer);
+    if(checkWinningCondition())
+        g_GAME_IS_WON = true;
+    else
+        SwitchPlayers(m_otherPlayer);
 }
 
 
@@ -252,7 +263,8 @@ void Board::PerformMove(int index1Modifier, int index2Modifier){
     int testedMoveBegin = m_currentMoveBegin + index1Modifier; 
     int testedMoveEnd = m_currentMoveEnd +  index2Modifier;
     
-    //There is a difference between an impossible move that's not possible due to
+    //Packing that into a while provides us with the ability to wrap around and
+    //jump over already existing tiles
     while (testedMoveEnd < 30 && testedMoveBegin >= 0){
         if(MovePossible(testedMoveBegin, testedMoveEnd)){
             removeLastVirtualConnection();
@@ -298,6 +310,118 @@ void Board::toggleMode(){
     //std::cout << m_currentMoveBegin << std::endl << m_currentMoveEnd;
     removeLastVirtualConnection();
     addConnection(m_currentMoveBegin, m_currentMoveEnd, Virtual::VIRTUAL_PIECE);
+}
+
+
+//Helper to find if a vector contains a certain element
+bool vectorHelper_Exists(int el, std::vector<int> & vector){
+    for(size_t i = 0; i < vector.size(); i++){
+        if (el == vector[i]){
+            return true;
+        }
+    }
+    return false;
+}
+
+
+//Use Depth First Search in a very hacky way to find cycles
+bool Board::DFSCycles(int start, int node, std::vector<int> &visited){
+
+    if (visited.size() > 2 && node == start){
+        return true;
+    }
+
+    if (node != start)
+        visited.push_back(node);
+    for( size_t i = 0; i < (*m_currentGraphPtr)[node].size(); i++){
+        
+        if ( ((*m_currentGraphPtr)[node][i] == start && visited.size() < 3) 
+                || vectorHelper_Exists( (*m_currentGraphPtr)[node][i], visited))
+            continue;
+
+        if(DFSCycles(start, (*m_currentGraphPtr)[node][i], visited)){
+            return true;
+        }
+        
+    }
+    if(node != start)
+        visited.pop_back();
+    return false;
+}
+
+bool Board::DFSPathExists(int currentNode, int goalNode, std::vector<int> &visited){
+    if (goalNode == currentNode)
+        return true;
+    visited.push_back(currentNode);
+    for(size_t i = 0; i < (*m_currentGraphPtr)[currentNode].size(); i++){
+        
+        if(vectorHelper_Exists( (*m_currentGraphPtr)[currentNode][i], visited))
+            continue;
+
+        if(DFSPathExists( (*m_currentGraphPtr)[currentNode][i], goalNode, visited))
+            return true;
+
+    }
+    visited.pop_back();
+    return false;
+}
+
+void Board::PerformVictory(){
+    sf::Text text;
+    if (m_currentPlayer == Player::WHITE){
+        text = sf::Text("White One!", m_font);
+        text.setFillColor(sf::Color::White);
+    } else {
+        text = sf::Text("Red One!", m_font);
+        text.setFillColor(sf::Color::Red);
+    }
+    text.setCharacterSize(50);
+    text.setStyle(sf::Text::Bold);
+    // Draw it
+    m_text.push_back(text); 
+
+}
+
+bool Board::checkWinningCondition(){
+    //First check if there's a loop in the graph
+    for (size_t i = 0; i < (*m_currentGraphPtr).size(); i++){
+        if ((*m_currentGraphPtr)[i].size() < 2) 
+            continue;
+        std::vector<int> visited;
+        if(DFSCycles(i, i, visited)){
+            return true;
+        }
+    }
+
+    //Now we have to differentiate between RED and WHITE because of the 
+    //different numbering regarding the goals
+    if (m_currentPlayer == Player::WHITE){
+
+        for(int i = 0; i < 5; i++){
+            for(int j = 0; j < 5; j++){
+                std::vector<int> visited;
+                if(DFSPathExists(i, 29-j, visited)){
+                    /*sf::CircleShape tmp(20.0f, 6);
+                    m_debugCircles.push_back(tmp);*/
+                    return true;
+
+                }
+            }
+        }
+
+    } else {
+        for(int i = 0; i < 25; i += 6){
+            for(int j = 5; j < 30; j += 6){
+                std::vector<int> visited;
+                if(DFSPathExists(i, j, visited)){
+                    return true;
+
+                }
+            }
+        }
+    
+    }
+    return false;
 }
 
 

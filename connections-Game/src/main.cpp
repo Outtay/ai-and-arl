@@ -2,12 +2,18 @@
 #include "Board.h"
 #include <iostream>
 
+//global variable as declared in Board.h
+bool g_GAME_IS_WON = false;
+
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(1000, 1000 ), "SFML works!");
     Board board(200, 200,800);
     //sf::CircleShape shape(100.f, 6);
     //shape.setFillColor(sf::Color::Green);
+    
+    bool hasPerformedVictory = false;
+
 
     while (window.isOpen())
     {
@@ -21,28 +27,39 @@ int main()
                         || event.key.code == sf::Keyboard::Q)){
                 window.close();
             }
+            if (!hasPerformedVictory){
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Right){
+                    board.ShowMove(Board::Movement::RIGHT);
+                }
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Left){
+                    board.ShowMove(Board::Movement::LEFT);
+                }
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Up){
+                    board.ShowMove(Board::Movement::UP);
+                }
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Down){
+                    board.ShowMove(Board::Movement::DOWN);
+                }
 
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Right){
-                board.ShowMove(Board::Movement::RIGHT);
-            }
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Left){
-                board.ShowMove(Board::Movement::LEFT);
-            }
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Up){
-                board.ShowMove(Board::Movement::UP);
-            }
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Down){
-                board.ShowMove(Board::Movement::DOWN);
-            }
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return){
+                    board.CommitMove();
 
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return){
-                board.CommitMove();
+                }
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space){
+                    board.toggleMode();
+                }
+            } else {
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return){
+                    window.close();
+                }
 
             }
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space){
-                board.toggleMode();
-            }
 
+        }
+
+        if (g_GAME_IS_WON && !hasPerformedVictory){
+            board.PerformVictory();
+            hasPerformedVictory = true;
         }
         
         window.clear();
