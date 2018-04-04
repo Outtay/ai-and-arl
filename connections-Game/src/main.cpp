@@ -17,19 +17,36 @@ int main()
             if (event.type == sf::Event::Closed){
                 window.close();
             }
-            if (event.type == sf::Event::KeyPressed && (event.key.code == sf::Keyboard::Escape || event.key.code == sf::Keyboard::Q)){
+            if (event.type == sf::Event::KeyPressed && (event.key.code == sf::Keyboard::Escape 
+                        || event.key.code == sf::Keyboard::Q)){
                 window.close();
             }
+
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Right){
-                board.ShowMove(Board::Movement::RIGHT, Board::Player::WHITE);
-                //board.ShowMove(Board::Movement::RIGHT, Board::Player::RED);
+                board.ShowMove(Board::Movement::RIGHT);
+            }
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Left){
+                board.ShowMove(Board::Movement::LEFT);
+            }
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Up){
+                board.ShowMove(Board::Movement::UP);
+            }
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Down){
+                board.ShowMove(Board::Movement::DOWN);
+            }
+
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return){
+                board.CommitMove();
+
+            }
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space){
+                board.toggleMode();
             }
 
         }
         
         window.clear();
         board.RenderBoard(window);
-        //window.draw(shape);
         window.display();
     }
 
