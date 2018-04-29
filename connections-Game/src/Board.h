@@ -7,6 +7,8 @@
 #include <stack>
 #include <cmath>
 #include <iostream>
+#include <algorithm>
+#include <iterator>
 
 
 extern bool g_GAME_IS_WON;
@@ -15,6 +17,8 @@ extern bool g_GAME_IS_WON;
 class Board{
     
     static const size_t WINDOW_PADDING = 50;
+
+    static const int MAX_VALUE = 900000;
     
     public:
         struct Movement{
@@ -27,21 +31,27 @@ class Board{
         };
         
         enum Player{
-            RED = 0,
+            RED = -1,
             WHITE = 1
         };
         
-        enum Virtual {
+        enum PIECES {
             VIRTUAL_PIECE,
             REAL_PIECE
         };
+        
+        struct Position{
+            int id1;
+            int id2;
+        };
 
-
+        Board();
         explicit Board(int xStart, int yStart, int size);
         ~Board();
 
         void RenderBoard(sf::RenderWindow &window);        
         void CommitMove();
+        void CommitMoveAI(Board::Position pos);
         void ShowMove(Movement::Enum e);
 
         //change from horizontal to vertical and vice-versa
@@ -55,11 +65,21 @@ class Board{
             return m_currentPlayer;
         }
 
+        //add a connection between two nodes and depending on whether it's real or not
+        //add it to the graph
+        void addConnection(int id1, int id2, PIECES piece);
         
+        void setState(Player player);
 
-    private:
+
+    //private:
+    public:
 
         //-----------Member Variables------------
+        
+        int m_xStart;
+        int m_yStart;
+        int m_boardSize;
     
         float m_SquareSize = 10.0f;
         bool m_horizontalMode = true;
@@ -105,30 +125,51 @@ class Board{
         
         //---------Methods------------
         
-        //add a connection between to nodes and depending on whether it's real or not
-        //add it to the graph
-        void addConnection(int id1, int id2, Virtual piece);
-
+        
         void removeLastVirtualConnection();
 
         bool ConnectionExists(int id1, int id2);
 
+        //Helper Function for MovePossible
         bool CrossingOpponent(int id1, int id2);
 
         //Finding the first legal move on the board and writing it into the id
         void FirstLegalMove(int &id1, int &id2);
         
-        //Try the desired move and see if it works
+        //Try the desired move as a modification of the current position and show it
         void PerformMove(int index1Modifier, int index2Modifier);
 
         bool MovePossible(int id1, int id2);
 
         void SwitchPlayers(Player player);
 
-        void setState(Player player);
 
         bool DFSCycles(int start, int node, std::vector<int> &visited);
         bool DFSPathExists(int currentNode, int goalNode, std::vector<int> &visited);
+
+
+        //Strictly AI - Stuff: waiting for refactor
+        
+        void createTmpFromCurrent(Board &current);
+
+        //returns the length of the path formed by the last piece
+        //IMPORTANT: if winning condition is not checked beforehand, this might result in an
+        //infinite loop due to cycles
+        int pathLengthLastPosition(Position lastPos, Board &tmpBoard);
+
+        //returns a value based on the number and "quality" of paths that are present on the board
+        //IMPORTANT: when a new move is made, only call this if the winning condition has been checked
+        int pathHeuristic(Board &tmpBoard, std::vector<int> &visited);
+
+        //returns a value based on the proximity to the middle
+        int centerHeuristic(Board &tmpBoard);
+
+
+        //Evaluates the Board for the current player
+        int BoardEvaluation(Board &tmpBoard);
+        Position BestMove(Board &tmpBoard);
+
+        //END OF AI STUFF
 
 
 };

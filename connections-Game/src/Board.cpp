@@ -1,7 +1,9 @@
 #include "Board.h"
 
 
-Board::Board(int xStart, int yStart, int size){
+Board::Board(int xStart, int yStart, int size)
+    :m_xStart(xStart), m_yStart(yStart), m_boardSize(size)
+{
 
             /*int viewSquare = std::min(windowHeight - WINDOW_PADDING, windowWidth- WINDOW_PADDING);
             int verticalOffset = windowHeight - viewSquare;
@@ -53,7 +55,7 @@ Board::Board(int xStart, int yStart, int size){
 
             //This already starts the game and puts the first edge on the board
             FirstLegalMove(m_currentMoveBegin, m_currentMoveEnd);
-            addConnection(m_currentMoveBegin, m_currentMoveEnd, Virtual::VIRTUAL_PIECE);
+            addConnection(m_currentMoveBegin, m_currentMoveEnd, PIECES::VIRTUAL_PIECE);
 
             m_font.loadFromFile("arial.ttf");
             
@@ -64,6 +66,10 @@ Board::Board(int xStart, int yStart, int size){
 
 
 Board::~Board(){
+}
+
+Board::Board(){
+
 }
 
 
@@ -102,11 +108,12 @@ void Board::RenderBoard(sf::RenderWindow &window){
 
 
 
-void Board::addConnection(int id1, int id2, Virtual piece){
+void Board::addConnection(int id1, int id2, PIECES piece){
     //Only write the connection into the graph if the piece is final        
-    if(piece == Virtual::REAL_PIECE){
+    if(piece == PIECES::REAL_PIECE){
         (*m_currentGraphPtr)[id1].push_back(id2);
         (*m_currentGraphPtr)[id2].push_back(id1);
+        //Also add it to a general big graph
     }
     
     sf::Vector2f pos1 = m_currentSquarePtr[id1].getPosition();
@@ -157,7 +164,7 @@ bool Board::ConnectionExists(int id1, int id2){
 //simply check their bounding boxes. Would've loved something more precise
 //with graphs, but that would've probably required a look-up table of some sort
 bool Board::CrossingOpponent(int id1, int id2){
-    addConnection(id1, id2, Virtual::VIRTUAL_PIECE);
+    addConnection(id1, id2, PIECES::VIRTUAL_PIECE);
 
     sf::FloatRect lastConnectionBounds = m_currentEdgePtr[(*m_currentEdgeSizePtr)-1].getGlobalBounds();
     
@@ -175,7 +182,8 @@ bool Board::CrossingOpponent(int id1, int id2){
 
 
 //using the ids as return values when searching for the first possible move on the board,
-//giving preferential treatment to the previous location when dealing with 
+//giving preferential treatment to the previous location
+//id1 and id2 have to be at least initialized and should preferrably be valid
 void Board::FirstLegalMove(int &id1, int &id2){
 
     if (m_horizontalMode){
@@ -225,14 +233,23 @@ void Board::SwitchPlayers(Player player){
     m_currentMoveBegin = 0;
     m_currentMoveEnd = 1;
     FirstLegalMove(m_currentMoveBegin, m_currentMoveEnd);
-    addConnection(m_currentMoveBegin, m_currentMoveEnd, Virtual::VIRTUAL_PIECE);
+    addConnection(m_currentMoveBegin, m_currentMoveEnd, PIECES::VIRTUAL_PIECE);
 }
 
 
 //Finalize a move made by the user
 void Board::CommitMove(){
     removeLastVirtualConnection();
-    addConnection(m_currentMoveBegin, m_currentMoveEnd, Virtual::REAL_PIECE);
+    addConnection(m_currentMoveBegin, m_currentMoveEnd, PIECES::REAL_PIECE);
+    if(checkWinningCondition())
+        g_GAME_IS_WON = true;
+    else
+        SwitchPlayers(m_otherPlayer);
+}
+
+void Board::CommitMoveAI(Board::Position pos){
+    removeLastVirtualConnection();
+    addConnection(pos.id1, pos.id2, PIECES::REAL_PIECE);
     if(checkWinningCondition())
         g_GAME_IS_WON = true;
     else
@@ -258,7 +275,7 @@ bool Board::MovePossible(int id1, int id2){
 }
 
 
-//Try to perform a move that is desired by the user
+//Try to perform a move that is desired by the user, but don't add it to the graph yet
 void Board::PerformMove(int index1Modifier, int index2Modifier){
     int testedMoveBegin = m_currentMoveBegin + index1Modifier; 
     int testedMoveEnd = m_currentMoveEnd +  index2Modifier;
@@ -270,7 +287,7 @@ void Board::PerformMove(int index1Modifier, int index2Modifier){
             removeLastVirtualConnection();
             m_currentMoveBegin = testedMoveBegin;
             m_currentMoveEnd = testedMoveEnd;
-            addConnection(m_currentMoveBegin, m_currentMoveEnd, Virtual::VIRTUAL_PIECE);
+            addConnection(m_currentMoveBegin, m_currentMoveEnd, PIECES::VIRTUAL_PIECE);
             break;
         } else {
             testedMoveBegin += index1Modifier;
@@ -303,13 +320,12 @@ void Board::ShowMove(Movement::Enum e){
 }
 
 
-
 void Board::toggleMode(){
     m_horizontalMode = !m_horizontalMode;
     FirstLegalMove(m_currentMoveBegin, m_currentMoveEnd);
     //std::cout << m_currentMoveBegin << std::endl << m_currentMoveEnd;
     removeLastVirtualConnection();
-    addConnection(m_currentMoveBegin, m_currentMoveEnd, Virtual::VIRTUAL_PIECE);
+    addConnection(m_currentMoveBegin, m_currentMoveEnd, PIECES::VIRTUAL_PIECE);
 }
 
 
@@ -369,10 +385,10 @@ bool Board::DFSPathExists(int currentNode, int goalNode, std::vector<int> &visit
 void Board::PerformVictory(){
     sf::Text text;
     if (m_currentPlayer == Player::WHITE){
-        text = sf::Text("White One!", m_font);
+        text = sf::Text("White Won!", m_font);
         text.setFillColor(sf::Color::White);
     } else {
-        text = sf::Text("Red One!", m_font);
+        text = sf::Text("Red Won!", m_font);
         text.setFillColor(sf::Color::Red);
     }
     text.setCharacterSize(50);
@@ -454,4 +470,55 @@ void Board::setState(Player player){
         m_playerBoardWidth = 6;
         m_playerBoardHeight = 5;
     }
+}
+
+
+
+
+//-------------AI STUFF----------------
+
+int Board::BoardEvaluation(Board &tmpBoard){
+
+    int result = 0;
+    
+    if (checkWinningCondition())
+        result = 10000;
+
+    if (m_currentPlayer == Player::WHITE){
+
+    } else {
+        
+    }
+
+    return result;
+}
+
+Board::Position Board::BestMove(Board &tmpBoard){
+
+    //std::vector< std::vector <int> > tmpAIGraph = (*m_currentGraphPtr); 
+    return {0,0};
+}
+
+int Board::pathHeuristic(Board &tmpBoard, std::vector<int> &visited){
+    int result = 0;
+    
+    //visited.push_back(currentNode);
+    for(size_t i = 0; i < (*m_currentGraphPtr).size(); i++){
+
+        for(size_t j = 0; j < (*m_currentGraphPtr)[i].size(); j++){
+
+        }
+        
+        /*if(vectorHelper_Exists( (*m_currentGraphPtr)[currentNode][i], visited))
+            continue;
+
+        if(DFSPathExists( (*m_currentGraphPtr)[currentNode][i], goalNode, visited))
+            return true;*/
+
+    }
+    visited.pop_back();
+
+
+
+    return result;
 }
