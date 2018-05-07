@@ -1,7 +1,7 @@
 LIBS=-lsfml-graphics -lsfml-window -lsfml-system
 CXX = clang++
-CXXFLAGS = -c -ggdb -O3 -Wall -Wextra
-LDFLAGS = -ggdb -O3
+CXXFLAGS = -c -ggdb -O0 -Wall -Wextra
+LDFLAGS = -ggdb -O0
 
 EXECUTABLE=connections
 BUILDDIR = ./build

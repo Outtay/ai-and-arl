@@ -4,7 +4,7 @@
 
 #include <vector>
 #include <iostream>
-
+#include <chrono>
 
 #include "Board.h"
 
@@ -12,10 +12,13 @@
 class AI {
     
     public:
-        AI(Board &currentBoard);
+        AI(Board &currentBoard, bool AlphaBetaPruningEnabled, int depth);
         void updateTmpBoard();
 
         int Heuristic(Board &board, int alpha, int beta, int maxDepth);
+
+        bool m_alphaBetaPruningEnabled;
+        int m_depth;
 
     //private: 
     public:
