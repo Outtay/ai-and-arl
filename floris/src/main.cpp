@@ -85,7 +85,7 @@ int main(int argc, char *argv[]){
 
     DrawLSystem(window, resultString);
 
-    //window.display();
+    window.display();
     
     /*sf::Vector2u windowSize = window.getSize();
     sf::Texture texture;
