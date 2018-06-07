@@ -17,12 +17,12 @@ struct Production{
 
 void Parser(const std::string &, std::string &, std::unordered_map<char, std::vector<Production>> &);
 std::string EvolveString();
-void DrawLSystem(sf::RenderWindow &window, const std::string &lsystem);
+void DrawLSystem(sf::RenderTexture &window, const std::string &lsystem);
 sf::RectangleShape MakeLine(sf::Vector2f &out_currentPos, float currentAngle);
 
 const int WIDTH = 1280;
 const int HEIGHT = 1024;
-const int AREA = WIDTH * HEIGHT;
+//const int AREA = WIDTH * HEIGHT;
 
 std::string fileName;
 std::string axiom;
@@ -32,8 +32,9 @@ std::string seedStr = "tttet";
 std::string outputFile = "output.png";
 
 float lineLength = 100.0f;
-float lineWidth = 5.0f;
+float lineWidth = 10.0f;
 float angle = 21.0f;
+bool everyLetterMeansDraw = false;
 
 int main(int argc, char *argv[]){
 
@@ -53,6 +54,8 @@ int main(int argc, char *argv[]){
         }
         else if (std::string(argv[i]).compare("-output") == 0){
             outputFile = argv[++i];
+        } else if(std::string(argv[i]).compare("-drawEveryLetter") == 0){
+            everyLetterMeansDraw = true;
         }
 
 
@@ -75,21 +78,23 @@ int main(int argc, char *argv[]){
 
     //SFML stuff
     
-    sf::RenderWindow window (sf::VideoMode(1280, 1080, 32), "Test");
+    sf::RenderTexture window;
+    window.create(1280, 1080, false);
     //std::cout << window.getSize().x << ", " << window.getSize().y << std::endl;
     window.clear();
 
     DrawLSystem(window, resultString);
 
-    window.display();
+    //window.display();
     
-    sf::Vector2u windowSize = window.getSize();
+    /*sf::Vector2u windowSize = window.getSize();
     sf::Texture texture;
     texture.create(windowSize.x, windowSize.y);
-    texture.update(window);
+    texture.update(window);*/
      
     //std::cout << texture.getSize().x << ", " << texture.getSize().y <<std::endl;
-    sf::Image screenshot = texture.copyToImage();
+    
+    sf::Image screenshot = window.getTexture().copyToImage();
     
 
     screenshot.saveToFile(outputFile);
@@ -181,7 +186,7 @@ std::string EvolveString(){
 }
 
 
-void DrawLSystem(sf::RenderWindow &window, const std::string &lsystem){
+void DrawLSystem(sf::RenderTexture &window, const std::string &lsystem){
 
     sf::Vector2f currentPos(WIDTH/2, HEIGHT/2);
     float currentAngle = 0;
@@ -236,6 +241,9 @@ void DrawLSystem(sf::RenderWindow &window, const std::string &lsystem){
                 }
             default:
                 {
+                    if (everyLetterMeansDraw){
+                        lineVector.push_back(MakeLine(currentPos,currentAngle));
+                    }
                     
                 }
         }
