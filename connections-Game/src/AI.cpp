@@ -60,12 +60,13 @@ Board::Position AI::BestMove(Board &tmpBoard){
     int bestValue = 9000;
     int alpha = -9000;
     int beta = 9000;
-    int depth = 3;
+    int depth = 2;
 
     
     //std::cout << "Possible Moves:" << std::endl;
 
     std::vector<Board::Position> possibleMoveVector = possibleMoves(tmpBoard);
+
  
     for (size_t i = 0; i < possibleMoveVector.size(); i++){
         //std::cout << possibleMoveVector[i].id1 << "," << possibleMoveVector[i].id2 << std::endl;
