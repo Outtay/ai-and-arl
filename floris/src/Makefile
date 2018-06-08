@@ -3,7 +3,7 @@ CXX = clang++
 CXXFLAGS = -c -ggdb -O0 -Wall -Wextra
 LDFLAGS = -ggdb -O0
 
-EXECUTABLE=connections
+EXECUTABLE=flos
 BUILDDIR = ./build
 SOURCEDIR = ./src
 

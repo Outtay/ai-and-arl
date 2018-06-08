@@ -2,15 +2,15 @@
 #include "Board.h"
 #include "AI.h"
 #include <iostream>
+#include <string>
 
 //global variable as declared in Board.h
 bool g_GAME_IS_WON = false;
 
-int main()
+int main(int argc, char *argv[])
 {
     sf::RenderWindow window(sf::VideoMode(1000, 1000 ), "SFML works!");
     Board board(200, 200,800);
-    AI ai(board);
     //sf::CircleShape shape(100.f, 6);
     //shape.setFillColor(sf::Color::Green);
     
@@ -18,9 +18,52 @@ int main()
 
     bool playingWithAI = true;
 
+    bool aiPlayingagainstItself = false;
+    int depthHor = 3;
+    bool aiBegins = false;
+    bool alphaBetaPruningEnabled = true;
+
+
+    //Parse command line arguments
+    for (int i = 1; i < argc; i++){
+		if (std::string(argv[i]).compare("-aibattle") == 0){
+			aiPlayingagainstItself = true;
+		}
+		else if (std::string(argv[i]).compare("-hor") == 0){
+            if (std::string(argv[i+1]).compare("inf") == 0){
+                    depthHor = 100000;
+                    i++;
+                }
+            else 
+                depthHor = atoi(argv[++i]);
+		}
+		else if (std::string(argv[i]).compare("-aibegins") == 0){
+			aiBegins = true;
+		}
+        else if (std::string(argv[i]).compare("-alphabetaDisable") == 0){
+			alphaBetaPruningEnabled = false;
+		}
+
+	}
+
+
+    AI ai(board, alphaBetaPruningEnabled, depthHor);
+    
+
+    if (aiBegins){
+        board.removeLastVirtualConnection();
+        board.SwitchPlayers(board.m_otherPlayer);
+        Board::Position move = ai.dummyAIcall();
+        board.CommitMoveAI(move);
+
+        aiBegins = false;
+    } else if (aiPlayingagainstItself){
+        board.removeLastVirtualConnection();
+    }
+
 
     while (window.isOpen())
-    {
+   {
         sf::Event event;
         while (window.pollEvent(event))
         {
@@ -31,7 +74,9 @@ int main()
                         || event.key.code == sf::Keyboard::Q)){
                 window.close();
             }
-            if (!hasPerformedVictory){
+
+            if (!hasPerformedVictory && !aiPlayingagainstItself){
+
                 if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Right){
                     board.ShowMove(Board::Movement::RIGHT);
                 }
@@ -56,6 +101,16 @@ int main()
                 if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space){
                     board.toggleMode();
                 }
+            } else if (aiPlayingagainstItself && !hasPerformedVictory){
+                
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return){
+
+                    if( !g_GAME_IS_WON){
+                        Board::Position move = ai.dummyAIcall();
+                        board.CommitMoveAIToAI(move);
+                    }
+                }
+
             } else {
                 if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return){
                     window.close();

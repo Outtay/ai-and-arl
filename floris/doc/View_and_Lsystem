@@ -1,0 +1,18 @@
+angle increment: 22.5 
+initial line width: 5 pixels
+initial color: 2
+color increment: 1
+scale factor: 0.8000
+
+Lsystem: 1
+derivation length: 7
+Axiom: FA
+F --> /////F
+A --> [&F;L,!KA]/////’[&F;L,!KA]///////’[&F;L,!KA]
+L --> [’’’^^{-f+f+f-|-f+f+f}] 
+K --> F
+homomorphism
+K --> ;;[’’’^^@O(0.3)],,
+endlsystem
+
+/*only the colors need to be adjusted*/

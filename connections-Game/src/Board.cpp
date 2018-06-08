@@ -146,7 +146,8 @@ void Board::addConnection(int id1, int id2, PIECES piece){
 
 
 void Board::removeLastVirtualConnection(){
-    (*m_currentEdgeSizePtr)--;
+    if ((*m_currentEdgeSizePtr) > 0)
+        (*m_currentEdgeSizePtr)--;
 }
 
 
@@ -254,6 +255,19 @@ void Board::CommitMoveAI(Board::Position pos){
         g_GAME_IS_WON = true;
     else
         SwitchPlayers(m_otherPlayer);
+}
+
+void Board::CommitMoveAIToAI(Board::Position pos){
+    addConnection(pos.id1, pos.id2, PIECES::REAL_PIECE);
+    if(checkWinningCondition())
+        g_GAME_IS_WON = true;
+    else{
+        setState(m_otherPlayer);
+        m_horizontalMode = true;
+        m_currentMoveBegin = 0;
+        m_currentMoveEnd = 1;
+        FirstLegalMove(m_currentMoveBegin, m_currentMoveEnd);
+    }
 }
 
 
@@ -440,6 +454,11 @@ bool Board::checkWinningCondition(){
     return false;
 }
 
+Board::Board(Board &board, bool test){
+    if (test){
+        this->m_whiteSquare_Graph = board.m_whiteSquare_Graph;
+    }
+}
 
 
 void Board::setState(Player player){

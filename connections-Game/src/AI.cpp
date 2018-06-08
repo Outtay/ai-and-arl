@@ -1,15 +1,17 @@
 #include "AI.h"
 
 
-AI::AI(Board &currentBoard)
+AI::AI(Board &currentBoard, bool alphaBetaPruningEnabled, int depth)
     //:m_currentBoard(currentBoard)
 { 
     //m_tmpBoard(currentBoard);
     m_currentBoardPtr = &currentBoard;
+    m_alphaBetaPruningEnabled = alphaBetaPruningEnabled;
+    m_depth = depth;
 }
 
 Board AI::copyBoardFromCurrent(){
-    Board tmp = *m_currentBoardPtr;
+    Board tmp (*m_currentBoardPtr);
     //setState changes the pointers from the copied object
     tmp.setState(tmp.m_currentPlayer);
     return tmp;
@@ -55,12 +57,14 @@ std::vector<Board::Position> possibleMoves(Board &tmpBoard){
 //moves that are valid moves
 //TODO other optimization: don't create a whole new real board for every iteration
 Board::Position AI::BestMove(Board &tmpBoard){
+	const auto start = std::chrono::high_resolution_clock::now();
+
 
     Board::Position bestMove;
     int bestValue = 9000;
     int alpha = -9000;
     int beta = 9000;
-    int depth = 2;
+    int depth = m_depth;
 
     
     //std::cout << "Possible Moves:" << std::endl;
@@ -70,9 +74,11 @@ Board::Position AI::BestMove(Board &tmpBoard){
  
     for (size_t i = 0; i < possibleMoveVector.size(); i++){
         //std::cout << possibleMoveVector[i].id1 << "," << possibleMoveVector[i].id2 << std::endl;
-        Board newBoard = tmpBoard;
+        Board newBoard(tmpBoard);
+        
         newBoard.setState(newBoard.m_currentPlayer);
         newBoard.addConnection(possibleMoveVector[i].id1, possibleMoveVector[i].id2, Board::PIECES::REAL_PIECE);
+        newBoard.setState(newBoard.m_otherPlayer);
 
         int value = Heuristic(newBoard, alpha, beta, depth - 1);
 
@@ -87,14 +93,21 @@ Board::Position AI::BestMove(Board &tmpBoard){
 
     //int id1 = 0, id2 = 1;
     //tmpBoard.FirstLegalMove(id1, id2);
+
+	const auto end = std::chrono::high_resolution_clock::now();
+	const float milliseconds = std::chrono::duration<float, std::milli>(end - start).count();
+
+	//printf("turn took %.3f ms\n", milliseconds);
+
     return bestMove;
+
 }
 
 int AI::Heuristic(Board &board, int alpha, int beta, int maxDepth){
 
-    bool alphaBetaPruningEnabled = false;
     
     if (board.checkWinningCondition()){
+        //std::cout << "Winning: " << board.m_currentPlayer <<  std::endl;
         return -5000;
     }
     if (maxDepth <= 0){
@@ -111,18 +124,24 @@ int AI::Heuristic(Board &board, int alpha, int beta, int maxDepth){
     std::vector<Board::Position> possibleMoveVector = possibleMoves(board);
  
     for (size_t i = 0; i < possibleMoveVector.size(); i++){
-        Board newBoard = board;
+        Board newBoard(board);
+        //std::cout << &newBoard << std::endl;
+        //std::cout << &board << std::endl;
+        /*Board testBoard(board, true);
+        std::cout << &testBoard << std::endl;
+        std::cout << &board << std::endl;
+        */
         newBoard.setState(newBoard.m_currentPlayer);
         newBoard.addConnection(possibleMoveVector[i].id1, possibleMoveVector[i].id2, Board::PIECES::REAL_PIECE);
         newBoard.setState(newBoard.m_otherPlayer);
 
-        int nextValue = -Heuristic(newBoard, -beta, -alpha, maxDepth - 1);
+        int nextValue = Heuristic(newBoard, -beta, -alpha, maxDepth - 1);
 
         if (nextValue > maxValue){
             maxValue = nextValue;
         }
 
-        if (alphaBetaPruningEnabled){
+        if (m_alphaBetaPruningEnabled){
             if (nextValue >= beta){
                 break;
             }

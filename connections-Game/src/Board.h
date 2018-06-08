@@ -48,10 +48,12 @@ class Board{
         Board();
         explicit Board(int xStart, int yStart, int size);
         ~Board();
+        Board(Board &board, bool test);
 
         void RenderBoard(sf::RenderWindow &window);        
         void CommitMove();
         void CommitMoveAI(Board::Position pos);
+        void CommitMoveAIToAI(Board::Position pos);
         void ShowMove(Movement::Enum e);
 
         //change from horizontal to vertical and vice-versa
