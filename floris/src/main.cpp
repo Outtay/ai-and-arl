@@ -79,7 +79,7 @@ int main(int argc, char *argv[]){
     //SFML stuff
     
     sf::RenderTexture window;
-    window.create(1280, 1080, false);
+    window.create(1280, 1080);
     //std::cout << window.getSize().x << ", " << window.getSize().y << std::endl;
     window.clear();
 

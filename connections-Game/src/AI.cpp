@@ -70,6 +70,7 @@ Board::Position AI::BestMove(Board &tmpBoard){
     //std::cout << "Possible Moves:" << std::endl;
 
     std::vector<Board::Position> possibleMoveVector = possibleMoves(tmpBoard);
+
  
     for (size_t i = 0; i < possibleMoveVector.size(); i++){
         //std::cout << possibleMoveVector[i].id1 << "," << possibleMoveVector[i].id2 << std::endl;
