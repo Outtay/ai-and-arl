@@ -215,6 +215,7 @@ int main(int argc, char *argv[]){
 
         //Validating the Network
         float numOfCorrect = 0.0;
+        float percentageWrong = 0.0;
         for (size_t i = 0; i < validationVector.size(); i++){
             //Init the Input layer
             InputMatrix.data[0][0] = validationVector[i].v1;
@@ -238,6 +239,8 @@ int main(int argc, char *argv[]){
                     max = ActivatedOutputMatrix.data[j][0];
                     bestIndex = j;
                 }
+                if ((int) j == validationVector[i].index )
+                    percentageWrong += 1 - ActivatedOutputMatrix.data[j][0];
             }
             if (bestIndex == validationVector[i].index)
                 numOfCorrect += 1.0;
@@ -250,6 +253,7 @@ int main(int argc, char *argv[]){
         }
 
         std::cout << 1 - numOfCorrect/((float) validationVector.size()) << std::endl;
+        //std::cout << percentageWrong/(float) validationVector.size() << std::endl;
 
         if (numOfCorrect/(float) validationVector.size() > 1 - g_errorThreshold){
             break;
