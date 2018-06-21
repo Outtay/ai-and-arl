@@ -52,6 +52,7 @@ void OutputErrorFunction(const matrix_t &matrix, matrix_t &result, int correctIn
 void DerivativeActivation(const matrix_t &matrix, matrix_t &result);
 void UpdateWeightMatrix(const matrix_t &deltaMatrix, matrix_t &weights);
 void PrintMatrix(const matrix_t &matrix);
+void DeleteMatrix(const matrix_t &matrix);
 
 std::default_random_engine GEN;
 //std::string fileName = "iris-z-score-normalized.csv";
@@ -68,6 +69,7 @@ bool checkInput = false;
 flowerData input;
 
 float g_learningRate = 0.005;
+float g_errorThreshold = 0.06;
 
 //Input is 4 neurons
 //Weight Matrix must be 20x4
@@ -75,12 +77,9 @@ float g_learningRate = 0.005;
 //Weight Matrix must be 3x20
 //Output is 3 neurons
 
-//TODO memory cleanup is not yet happening
 int main(int argc, char *argv[]){
+
     std::srand ( unsigned ( std::time(0) ) );
-    
-    std::seed_seq seed (seedStr.begin(), seedStr.end());
-    GEN.seed(seed);
 
     if (argc < 5){
         //std::cout << "Not enough arguments" << std::endl;
@@ -100,9 +99,16 @@ int main(int argc, char *argv[]){
             float v3 = std::stof(argv[++i]);
             float v4 = std::stof(argv[++i]);
             input = {v1,v2,v3,v4,0};
+        } else if (std::string(argv[i]).compare("-thresholdError") == 0){
+            g_errorThreshold = std::stof(argv[++i]);
+        } else if (std::string(argv[i]).compare("-seed") == 0){
+            seedStr = argv[++i];
         }
 
     }
+    
+    std::seed_seq seed (seedStr.begin(), seedStr.end());
+    GEN.seed(seed);
 
     std::vector<flowerData> dataVector;
     Parser(fileName, dataVector);
@@ -135,7 +141,7 @@ int main(int argc, char *argv[]){
     matrix_t OutputMatrix;
 
     
-    int generations = 70;
+    int generations = 200;
     if (!trainNetwork)
         generations = 0;
 
@@ -190,6 +196,20 @@ int main(int argc, char *argv[]){
 
             UpdateWeightMatrix(DeltaHidden1Matrix, Input_Hidden1_WeightMatrix); 
 
+
+            //Cleanup
+            DeleteMatrix(Hidden1Matrix);
+            DeleteMatrix(ActivatedHidden1Matrix);
+            DeleteMatrix(OutputMatrix);
+            DeleteMatrix(ActivatedOutputMatrix);
+            DeleteMatrix(ErrorFunctionOutputMatrix);
+            DeleteMatrix(DerivativeOutputMatrix);
+            DeleteMatrix(DeltaOutputMatrix);
+            DeleteMatrix(Hidden1_Output_WeightMatrixTransposed);
+            DeleteMatrix(Hidden1WeightDeltaOutputMultMatrix);
+            DeleteMatrix(DerivativeHidden1Matrix);
+            DeleteMatrix(DeltaHidden1Matrix);
+
         }
 
 
@@ -221,11 +241,17 @@ int main(int argc, char *argv[]){
             }
             if (bestIndex == validationVector[i].index)
                 numOfCorrect += 1.0;
+            
+            //Cleanup
+            DeleteMatrix(Hidden1Matrix);
+            DeleteMatrix(ActivatedHidden1Matrix);
+            DeleteMatrix(OutputMatrix);
+            DeleteMatrix(ActivatedOutputMatrix);
         }
 
-        std::cout << numOfCorrect/((float) validationVector.size()) << std::endl;
+        std::cout << 1 - numOfCorrect/((float) validationVector.size()) << std::endl;
 
-        if (numOfCorrect/(float) validationVector.size() > 0.95){
+        if (numOfCorrect/(float) validationVector.size() > 1 - g_errorThreshold){
             break;
         }
         
@@ -348,6 +374,12 @@ int main(int argc, char *argv[]){
                 }
         }
         std::cout <<  resultString << " : " << max << std::endl;
+
+        //Cleanup
+        DeleteMatrix(Hidden1Matrix);
+        DeleteMatrix(ActivatedHidden1Matrix);
+        DeleteMatrix(OutputMatrix);
+        DeleteMatrix(ActivatedOutputMatrix);
 
     }
 
@@ -540,5 +572,14 @@ void PrintMatrix(const matrix_t &matrix){
         }
     }
     
+
+}
+
+void DeleteMatrix(const matrix_t &matrix){
+    
+    for (size_t i = 0; i < matrix.rows; i++){
+        delete[] matrix.data[i];
+    }
+    delete[] matrix.data;
 
 }
