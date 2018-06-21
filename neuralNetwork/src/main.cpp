@@ -39,6 +39,7 @@ float sigmoidDerivative (float x){
 
 
 void Parser(const std::string &fileName, std::vector<flowerData> &dataVector);
+void ParserMagnitude(const std::string &fileName, std::vector<flowerData> &dataVector);
 void SeparateData(const std::vector<flowerData> &dataVector, std::vector<flowerData> &trainingVector, std::vector<flowerData> &validationVector);
 void InitMatrix(matrix_t &matrix, size_t row, size_t col);
 void FillMatrix(matrix_t &matrix);
@@ -50,12 +51,23 @@ void Transpose(const matrix_t &A, matrix_t &result);
 void OutputErrorFunction(const matrix_t &matrix, matrix_t &result, int correctIndex);
 void DerivativeActivation(const matrix_t &matrix, matrix_t &result);
 void UpdateWeightMatrix(const matrix_t &deltaMatrix, matrix_t &weights);
+void PrintMatrix(const matrix_t &matrix);
 
 std::default_random_engine GEN;
-std::string fileName = "iris-z-score-normalized.csv";
-std::string seedStr = "tttet";
+//std::string fileName = "iris-z-score-normalized.csv";
+//std::string fileName = "magnitudeTestData.csv";
+std::string fileName = "iris_original.csv";
+//std::string fileName = "iris_z-score-plus-three.csv";
+//std::string fileName = "iris_range0to4.csv";
 
-float g_learningRate = 0.01;
+std::string weightFile = "weights.txt";
+std::string seedStr = "tttet";
+bool trainNetwork = false;
+bool writeWeights = false;
+bool checkInput = false;
+flowerData input;
+
+float g_learningRate = 0.005;
 
 //Input is 4 neurons
 //Weight Matrix must be 20x4
@@ -63,7 +75,7 @@ float g_learningRate = 0.01;
 //Weight Matrix must be 3x20
 //Output is 3 neurons
 
-
+//TODO memory cleanup is not yet happening
 int main(int argc, char *argv[]){
     std::srand ( unsigned ( std::time(0) ) );
     
@@ -77,13 +89,24 @@ int main(int argc, char *argv[]){
     for (int i = 1; i < argc; i++){
         if (std::string(argv[i]).compare("-file") == 0){
             fileName = argv[++i];
+        } else if (std::string(argv[i]).compare("-trainNetwork") == 0){
+            trainNetwork = true;
+        } else if (std::string(argv[i]).compare("-writeWeights") == 0){
+            writeWeights = true;
+        } else if (std::string(argv[i]).compare("-input") == 0){
+            checkInput = true;
+            float v1 = std::stof(argv[++i]);
+            float v2 = std::stof(argv[++i]);
+            float v3 = std::stof(argv[++i]);
+            float v4 = std::stof(argv[++i]);
+            input = {v1,v2,v3,v4,0};
         }
-
 
     }
 
     std::vector<flowerData> dataVector;
     Parser(fileName, dataVector);
+    //ParserMagnitude(fileName, dataVector);
     
     std::vector<flowerData> trainingVector;
     std::vector<flowerData> validationVector;
@@ -93,87 +116,200 @@ int main(int argc, char *argv[]){
     //Initialize our Network
     matrix_t InputMatrix;
     InitMatrix(InputMatrix, 4, 1);
+    //InitMatrix(InputMatrix, 1, 1);
 
     matrix_t Input_Hidden1_WeightMatrix;
-    InitMatrix(Input_Hidden1_WeightMatrix, 20, 4);
+    InitMatrix(Input_Hidden1_WeightMatrix, 40, 4);
+    //InitMatrix(Input_Hidden1_WeightMatrix, 2, 1);
     FillMatrix(Input_Hidden1_WeightMatrix);
 
     matrix_t Hidden1Matrix;
     //InitMatrix(Hidden1Matrix, 20, 1);
 
     matrix_t Hidden1_Output_WeightMatrix;
-    InitMatrix(Hidden1_Output_WeightMatrix, 3, 20);
+    InitMatrix(Hidden1_Output_WeightMatrix, 3, 40);
+    //InitMatrix(Hidden1_Output_WeightMatrix, 2, 2);
     FillMatrix(Hidden1_Output_WeightMatrix);
+    //PrintMatrix(Hidden1_Output_WeightMatrix);
     
     matrix_t OutputMatrix;
-    //InitMatrix(OutputMatrix, 3, 1);
 
-    //Training the network
-    for (size_t i = 0; i < trainingVector.size(); i++){
-        //Init the Input layer
-        InputMatrix.data[0][0] = trainingVector[i].v1;
-        InputMatrix.data[1][0] = trainingVector[i].v2;
-        InputMatrix.data[2][0] = trainingVector[i].v3;
-        InputMatrix.data[3][0] = trainingVector[i].v4;
+    
+    int generations = 70;
+    if (!trainNetwork)
+        generations = 0;
 
-        //Feedforward
-        MatrixMult(Input_Hidden1_WeightMatrix, InputMatrix, Hidden1Matrix);
-        matrix_t ActivatedHidden1Matrix;
-        Activation(Hidden1Matrix, ActivatedHidden1Matrix);
+    while (generations != 0){
+        //Training the network
+        for (size_t i = 0; i < trainingVector.size(); i++){
+            //Init the Input layer
+            InputMatrix.data[0][0] = trainingVector[i].v1;
+            InputMatrix.data[1][0] = trainingVector[i].v2;
+            InputMatrix.data[2][0] = trainingVector[i].v3;
+            InputMatrix.data[3][0] = trainingVector[i].v4;
+
+            //Feedforward
+            //Input * Weight = Values of Hidden Layer
+            MatrixMult(Input_Hidden1_WeightMatrix, InputMatrix, Hidden1Matrix);
+            matrix_t ActivatedHidden1Matrix;
+            Activation(Hidden1Matrix, ActivatedHidden1Matrix);
+            
+            MatrixMult(Hidden1_Output_WeightMatrix, ActivatedHidden1Matrix, OutputMatrix);
+            matrix_t ActivatedOutputMatrix;
+            SoftMax(OutputMatrix, ActivatedOutputMatrix);
+            
+            //Backpropagation
+            //
+            //Last Layer
+            //delta_j = derivativeSigmoid(activation_in_node) * (softmax - target) (=error)
+            matrix_t ErrorFunctionOutputMatrix;
+            OutputErrorFunction(ActivatedOutputMatrix, ErrorFunctionOutputMatrix, trainingVector[i].index);
+
+            matrix_t DerivativeOutputMatrix;
+            DerivativeActivation(OutputMatrix, DerivativeOutputMatrix);
+
+            matrix_t DeltaOutputMatrix;
+            HadamardProduct(ErrorFunctionOutputMatrix, DerivativeOutputMatrix, DeltaOutputMatrix);
+
+            UpdateWeightMatrix(DeltaOutputMatrix, Hidden1_Output_WeightMatrix);
+
+            //HiddenLayer
+            //delta_j = derivativeSigmoid(activation_in_node) * (weightsTransposed_j+1 * delta_j+1)
+            matrix_t Hidden1_Output_WeightMatrixTransposed;
+            Transpose(Hidden1_Output_WeightMatrix, Hidden1_Output_WeightMatrixTransposed);
+
+            //replaces the error term compared to the calculation for the last layer
+            matrix_t Hidden1WeightDeltaOutputMultMatrix;
+            MatrixMult(Hidden1_Output_WeightMatrixTransposed, DeltaOutputMatrix, Hidden1WeightDeltaOutputMultMatrix);
+
+            matrix_t DerivativeHidden1Matrix;
+            DerivativeActivation(Hidden1Matrix, DerivativeHidden1Matrix);
+
+            matrix_t DeltaHidden1Matrix;
+            HadamardProduct(Hidden1WeightDeltaOutputMultMatrix, DerivativeHidden1Matrix, DeltaHidden1Matrix);
+
+            UpdateWeightMatrix(DeltaHidden1Matrix, Input_Hidden1_WeightMatrix); 
+
+        }
+
+
+        //Validating the Network
+        float numOfCorrect = 0.0;
+        for (size_t i = 0; i < validationVector.size(); i++){
+            //Init the Input layer
+            InputMatrix.data[0][0] = validationVector[i].v1;
+            InputMatrix.data[1][0] = validationVector[i].v2;
+            InputMatrix.data[2][0] = validationVector[i].v3;
+            InputMatrix.data[3][0] = validationVector[i].v4;
+
+            //Feedforward
+            MatrixMult(Input_Hidden1_WeightMatrix, InputMatrix, Hidden1Matrix);
+            matrix_t ActivatedHidden1Matrix;
+            Activation(Hidden1Matrix, ActivatedHidden1Matrix);
+
+            MatrixMult(Hidden1_Output_WeightMatrix, ActivatedHidden1Matrix, OutputMatrix);
+            matrix_t ActivatedOutputMatrix;
+            SoftMax(OutputMatrix, ActivatedOutputMatrix);
+
+            float max = 0.0;
+            int bestIndex = 0;
+            for (size_t j = 0; j < ActivatedOutputMatrix.rows; j++){
+                if (ActivatedOutputMatrix.data[j][0] > max){
+                    max = ActivatedOutputMatrix.data[j][0];
+                    bestIndex = j;
+                }
+            }
+            if (bestIndex == validationVector[i].index)
+                numOfCorrect += 1.0;
+        }
+
+        std::cout << numOfCorrect/((float) validationVector.size()) << std::endl;
+
+        if (numOfCorrect/(float) validationVector.size() > 0.95){
+            break;
+        }
         
-        MatrixMult(Hidden1_Output_WeightMatrix, Hidden1Matrix, OutputMatrix);
-        matrix_t ActivatedOutputMatrix;
-        SoftMax(OutputMatrix, ActivatedOutputMatrix);
-        //std::cout << OutputMatrix.data[0][0] << ", " << OutputMatrix.data[1][0] << ", " << OutputMatrix.data[2][0] << std::endl;
+        SeparateData(dataVector, trainingVector, validationVector);
+
+        generations--;
+    }
+
+    //Read the weights from a file
+    if (!trainNetwork){
+        std::ifstream wFile;
+        wFile.open(weightFile);
+
+        for (size_t i = 0; i < Input_Hidden1_WeightMatrix.rows; i++){
+            for (size_t j = 0; j < Input_Hidden1_WeightMatrix.cols; j++){
+                std::string tmp;
+
+                if ( j == Input_Hidden1_WeightMatrix.cols - 1)
+                    getline(wFile, tmp, '\n');
+                else 
+                    getline(wFile, tmp, ',');
+                    
+                Input_Hidden1_WeightMatrix.data[i][j] = std::stof(tmp);
+            }
+        }
+
+        for (size_t i = 0; i < Hidden1_Output_WeightMatrix.rows; i++){
+            for (size_t j = 0; j < Hidden1_Output_WeightMatrix.cols; j++){
+                std::string tmp;
+
+                if ( j == Hidden1_Output_WeightMatrix.cols - 1)
+                    getline(wFile, tmp, '\n');
+                else 
+                    getline(wFile, tmp, ',');
+                Hidden1_Output_WeightMatrix.data[i][j] = std::stof(tmp);
+            }
+        }
+
+        wFile.close();
+    }
+
+    //Write the weights
+    if (writeWeights){
+        std::ofstream wFile;
+        wFile.open(weightFile);
+        for (size_t i = 0; i < Input_Hidden1_WeightMatrix.rows; i++){
+            for (size_t j = 0; j < Input_Hidden1_WeightMatrix.cols; j++){
+                wFile << Input_Hidden1_WeightMatrix.data[i][j];
+
+                if ( j == Input_Hidden1_WeightMatrix.cols - 1)
+                    wFile << '\n';
+                else 
+                    wFile << ',';
+            }
+        }
         
-        //Backpropagation
-        //
-        //Last Layer
-        matrix_t ErrorFunctionOutputMatrix;
-        OutputErrorFunction(ActivatedOutputMatrix, ErrorFunctionOutputMatrix, trainingVector[i].index);
+        for (size_t i = 0; i < Hidden1_Output_WeightMatrix.rows; i++){
+            for (size_t j = 0; j < Hidden1_Output_WeightMatrix.cols; j++){
+                wFile << Hidden1_Output_WeightMatrix.data[i][j];
 
-        matrix_t DerivativeOutputMatrix;
-        DerivativeActivation(OutputMatrix, DerivativeOutputMatrix);
-
-        matrix_t DeltaOutputMatrix;
-        HadamardProduct(ErrorFunctionOutputMatrix, DerivativeOutputMatrix, DeltaOutputMatrix);
-
-        UpdateWeightMatrix(DeltaOutputMatrix, Hidden1_Output_WeightMatrix);
-
-        //HiddenLayer
-        matrix_t Hidden1_Output_WeightMatrixTransposed;
-        Transpose(Hidden1_Output_WeightMatrix, Hidden1_Output_WeightMatrixTransposed);
-
-        //replaces the error term of the output
-        matrix_t Hidden1WeightDeltaOutputMultMatrix;
-        MatrixMult(Hidden1_Output_WeightMatrixTransposed, DeltaOutputMatrix, Hidden1WeightDeltaOutputMultMatrix);
-
-        matrix_t DerivativeHidden1Matrix;
-        DerivativeActivation(Hidden1Matrix, DerivativeHidden1Matrix);
-
-        matrix_t DeltaHidden1Matrix;
-        HadamardProduct(Hidden1WeightDeltaOutputMultMatrix, DerivativeHidden1Matrix, DeltaHidden1Matrix);
-
-        UpdateWeightMatrix(DeltaHidden1Matrix, Input_Hidden1_WeightMatrix); 
-
+                if ( j == Hidden1_Output_WeightMatrix.cols - 1)
+                    wFile << '\n';
+                else 
+                    wFile << ',';
+            }
+        }
+        
+        wFile.close();
     }
 
 
-    //Validating the Network
-    float numOfCorrect = 0.0;
-    for (size_t i = 0; i < validationVector.size(); i++){
-        //Init the Input layer
-        InputMatrix.data[0][0] = validationVector[i].v1;
-        InputMatrix.data[1][0] = validationVector[i].v2;
-        InputMatrix.data[2][0] = validationVector[i].v3;
-        InputMatrix.data[3][0] = validationVector[i].v4;
+
+    if (checkInput){ 
+        InputMatrix.data[0][0] = input.v1;
+        InputMatrix.data[1][0] = input.v2;
+        InputMatrix.data[2][0] = input.v3;
+        InputMatrix.data[3][0] = input.v4;
 
         //Feedforward
         MatrixMult(Input_Hidden1_WeightMatrix, InputMatrix, Hidden1Matrix);
         matrix_t ActivatedHidden1Matrix;
         Activation(Hidden1Matrix, ActivatedHidden1Matrix);
 
-        MatrixMult(Hidden1_Output_WeightMatrix, Hidden1Matrix, OutputMatrix);
+        MatrixMult(Hidden1_Output_WeightMatrix, ActivatedHidden1Matrix, OutputMatrix);
         matrix_t ActivatedOutputMatrix;
         SoftMax(OutputMatrix, ActivatedOutputMatrix);
 
@@ -185,19 +321,36 @@ int main(int argc, char *argv[]){
                 bestIndex = j;
             }
         }
-        if (bestIndex == validationVector[i].index)
-            numOfCorrect += 1.0;
+
+        //0 -> Iris setosa
+        //1 -> Iris versicolor
+        //2 -> Iris virginica
+        std::string resultString;
+        switch (bestIndex){
+            case 0:
+                {
+                    resultString = "Iris setosa";
+                    break;
+                }
+            case 1:
+                {
+                    resultString = "Iris versicolor";
+                    break;
+                }
+            case 2:
+                {
+                    resultString = "Iris virginica";
+                    break;
+                }
+            default:
+                {
+                    break;
+                }
+        }
+        std::cout <<  resultString << " : " << max << std::endl;
+
     }
 
-    std::cout << numOfCorrect/((float) validationVector.size()) << std::endl;
-    
-
-    //MatrixMult(aMatrix, bMatrix, cMatrix);
-
-    //std::cout << cMatrix.data[0][0] << std::endl;
-    //std::cout << cMatrix.data[0][1] << std::endl;
-    //std::cout << cMatrix.data[1][0] << std::endl;
-    //std::cout << cMatrix.data[1][1] << std::endl;
 
     
     
@@ -219,6 +372,23 @@ void Parser(const std::string &fileName, std::vector<flowerData> &dataVector){
         result.v3 = std::stof(tmp);
         getline(file, tmp, ',');
         result.v4 = std::stof(tmp);
+        getline(file, tmp, '\n');
+        result.index = std::stoi(tmp);
+        dataVector.push_back(result);
+
+        if(file.peek() == -1)
+            break;
+
+    }
+}
+void ParserMagnitude(const std::string &fileName, std::vector<flowerData> &dataVector){
+    std::ifstream file(fileName);
+    while(true){
+        flowerData result;
+        std::string tmp;
+
+        getline(file, tmp, ',');
+        result.v1 = std::stof(tmp);
         getline(file, tmp, '\n');
         result.index = std::stoi(tmp);
         dataVector.push_back(result);
@@ -347,8 +517,28 @@ void UpdateWeightMatrix(const matrix_t &deltaMatrix, matrix_t &weights){
     
     for (size_t i = 0; i < weights.rows; i++){
         for (size_t j = 0; j < weights.cols; j++){
-            weights.data[i][j] -= deltaMatrix.data[i][0] * g_learningRate;
+            weights.data[i][j] -= deltaMatrix.data[i][0] * g_learningRate ;
         }
     }
+
+}
+
+void PrintMatrix(const matrix_t &matrix){
+    std::cout << "Matrix:" << std::endl;
+    std::cout.precision(2);
+    for (size_t i = 0; i < matrix.rows; i++){
+        for (size_t j = 0; j < matrix.cols; j++){
+            if (matrix.data[i][j] > 0.0)
+                std::cout << ' ';
+            
+            std::cout << matrix.data[i][j] << std::fixed;
+            
+            if (j == matrix.cols-1){
+                std::cout << std::endl;
+            } else 
+                std::cout << " , ";
+        }
+    }
+    
 
 }
