@@ -1,0 +1,27 @@
+5: Reinforcement Learning braucht Domänenwissen
+
+11: Habe funktion in funktion in funktion in funktion
+
+17: Low level features kann man meist übernehmen (von Auto zu Motorrad zB). Sind nur Bildbausteine
+
+23: R gesamt heißt eigentlich nicht die lokale R zu maximieren sondern die globale
+
+25: Bei History ist es nicht falsch am Ende noch A_t zu schreiben, aber ist nicht relevant bei H_t
+
+27: wenn man in state s ist und a tätigt dass man in s' landet
+
+30: normalerweise kommt ein Vektor raus mit den Wahrscheinlichkeiten für die States
+    Erwartete Reward
+
+31: value function unter policy pi für state s... ist dasselbe wie wenn das pi oben steht
+    je später die Zukunft, desto weniger Einfluss
+
+32: erwartetet GESAMTE Belohnung. Es ist mit Aktion dabei, was möglich ist, weil deterministisch bei Aktionsfolge
+
+33: egal welche policy (falls Policy nicht sonderlich toll)
+
+37: Q Matrix ist erwartete Belohnungsmatrix
+
+38: Auswahl muss nicht zufällig sein. Könnte Wahrscheinlichkeiten beinhalten
+
+
